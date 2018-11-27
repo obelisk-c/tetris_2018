@@ -31,7 +31,7 @@ input key_rotate);
 	reg [3:0] x;
 	
 	// Used for the for loop to initialize the board.
-	integer i, j;
+	integer i, j, k;
 	
 	// The clocks used in the game.
 	wire clock_framerate, clock_block_fall;
@@ -161,16 +161,31 @@ input key_rotate);
 	
 	// Whether any of the four blocks that would result from a rotation would conflict with boundaries.
 	wire rotation_conflicts = rotation_out_of_bounds || rotation_intersects_existing;
+
+	// Array of lines filled, with each index corresponding to its row.
+	wire [19:0] completed_lines = {&board_state[19], &board_state[18], &board_state[17], &board_state[16],
+	&board_state[15], &board_state[14], &board_state[13], &board_state[12], &board_state[11], &board_state[10],
+	&board_state[9], &board_state[8], &board_state[7], &board_state[6], &board_state[5], &board_state[4],
+	&board_state[3], &board_state[2], &board_state[1], &board_state[0]};
+	
+	wire shift_down;
+	wire [4:0] cleared_index;
 	
 	control c1(.clock(clock_block_fall),
 	.start_game(start_game),
 	.resetn(resetn),
 	.filled_under(filled_under),
+	.completed_lines(completed_lines),
 	.load_block(load_block),
 	.drop_block(drop_block),
-	.update_board_state(update_board_state));
+	.update_board_state(update_board_state),
+	.shift_down(shift_down));
 	
-	
+	first_high_index fhi0(
+		.rows(completed_lines),
+		.index(cleared_index)
+		);
+		
 	
 	// Game logic.  Effectively datapath.
 	always@(posedge clock_framerate) begin
@@ -189,6 +204,12 @@ input key_rotate);
 			if (update_board_state) begin
 				update_board();
 			end
+		// Checks if a row needs to be cleared.
+		end else if (shift_down) begin
+			for (k=cleared_index; k<19; k=k+1) begin
+				board_state[k] <= board_state[k+1];
+			end
+			board_state[19] <= 10'd0;
 		// Checks if the user wants to move to the left.
 		end else if (key_left && !filled_left) begin
 			move_left();
