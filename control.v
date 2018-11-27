@@ -54,7 +54,7 @@ output reg shift_down);
             S_UPDATE_BOARD_STATE: begin
                 update_board_state = 1;
                 end
-				S_CHECK_LINES: begin
+				S_CLEAR_LINE: begin
 					 shift_down = 1;
 					 end
         // default:    // don't need default since we already made sure all of our outputs were assigned a value at the start of the always block
