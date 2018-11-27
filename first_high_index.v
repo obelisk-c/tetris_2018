@@ -24,6 +24,7 @@ output reg [4:0] index);
 			20'b001x_xxxx_xxxx_xxxx_xxxx: index = 5'd17;
 			20'b01xx_xxxx_xxxx_xxxx_xxxx: index = 5'd18;
 			20'b1xxx_xxxx_xxxx_xxxx_xxxx: index = 5'd19;
+			20'b0000_0000_0000_0000_0000: index = 5'd20;  // should never be used
 		endcase
 	end
 endmodule

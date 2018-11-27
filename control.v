@@ -6,7 +6,7 @@ input start_game,
 input resetn,
 output reg load_block,
 output reg drop_block,
-output reg update_board_state
+output reg update_board_state,
 output reg shift_down);
 	
     reg [3:0] current_state, next_state; 
@@ -15,8 +15,8 @@ output reg shift_down);
 					 S_PRE_GAME_BUFFER     = 4'd1,
                 S_LOAD_BLOCK          = 4'd2,
                 S_DROP_BLOCK          = 4'd3,
-                S_UPDATE_BOARD_STATE  = 4'd4;
-					 S_CHECK_LINES         = 4'd5;
+                S_UPDATE_BOARD_STATE  = 4'd4,
+					 S_CHECK_LINES         = 4'd5,
 					 S_CLEAR_LINE          = 4'd6;
 	
     // Next state logic aka our state table
@@ -29,7 +29,7 @@ output reg shift_down);
 					 S_DROP_BLOCK: next_state = filled_under ? S_UPDATE_BOARD_STATE : S_DROP_BLOCK;
 					 S_UPDATE_BOARD_STATE: next_state = S_CHECK_LINES;
 					 S_CHECK_LINES: next_state = (|completed_lines) ? S_CLEAR_LINE : S_LOAD_BLOCK;
-					 S_CLEAR_LINE: next_state = CHECK_LINES;
+					 S_CLEAR_LINE: next_state = S_CHECK_LINES;
 					 
             default:     next_state = S_PRE_GAME;
         endcase
