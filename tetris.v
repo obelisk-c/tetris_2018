@@ -3,7 +3,8 @@ input clock_on_board,
 input start_game,
 input resetn,
 input key_left,
-input key_right);
+input key_right,
+input key_rotate);
 
 	// An array that contains the status of each location in the board, and whether there is an already dropped
 	// block filling that coordinate.
@@ -13,16 +14,24 @@ input key_right);
 	reg [3:0]load_x;
    reg [4:0]load_y;
 	
+	// The block type and rotation state.
+	reg [2:0]block_type;
+	reg [2:0]rotation;
+	
 	// The x and y positions of the four blocks of the tetromino.
 	wire [4:0] block1_y, block2_y, block3_y, block4_y;
 	wire [3:0] block1_x, block2_x, block3_x, block4_x;
+	
+	// The x and y positions of the four blocks of the tetromino, if it were rotated.
+	wire [4:0] block1_y_test, block2_y_test, block3_y_test, block4_y_test;
+	wire [3:0] block1_x_test, block2_x_test, block3_x_test, block4_x_test;
 	
 	// The x and y positions of the tetromino's central block.
 	reg [4:0] y;
 	reg [3:0] x;
 	
 	// Used for the for loop to initialize the board.
-	integer i, j, k;
+	integer i, j;
 	
 	// The clocks used in the game.
 	wire clock_framerate, clock_block_fall;
@@ -40,6 +49,8 @@ input key_right);
 	block_returner b1(
 	.x(x),
 	.y(y),
+	.block_type(0),
+	.rotation(0),
 	.x1(block1_x),
 	.y1(block1_y),
 	.x2(block2_x),
@@ -48,6 +59,21 @@ input key_right);
 	.y3(block3_y),
 	.x4(block4_x),
 	.y4(block4_y));
+	
+	// Returns the four blocks of the next rotation
+	block_returner b2(
+	.x(x),
+	.y(y),
+	.block_type(0),
+	.rotation(0),
+	.x1(block1_x_test),
+	.y1(block1_y_test),
+	.x2(block2_x_test),
+	.y2(block2_y_test),
+	.x3(block3_x_test),
+	.y3(block3_y_test),
+	.x4(block4_x_test),
+	.y4(block4_y_test));
 	
 	// Returns a 60Hz (approximately) clock.
 	rate_divider r1(
@@ -86,6 +112,17 @@ input key_right);
 		end
 	endtask
 	
+	// Rotates the tetromino clockwise.
+	task rotate(); 
+		begin
+			if (rotation < 3) begin
+				rotation <= rotation + 1;
+			end else begin
+				rotation <= 0;
+			end
+		end
+	endtask
+	
 	// Fills in the board state with the current coordinates of the four blocks.
 	task update_board();
 		begin
@@ -112,30 +149,28 @@ input key_right);
 	(board_state[block1_y][block1_x + 1] || board_state[block2_y][block2_x + 1] 
 	|| board_state[block3_y][block3_x + 1] || board_state[block4_y][block4_x + 1]);
 	
-	// Array of lines filled, with each index corresponding to its row.
-	wire [19:0] completed_lines = {&board_state[19], &board_state[18], &board_state[17], &board_state[16],
-	&board_state[15], &board_state[14], &board_state[13], &board_state[12], &board_state[11], &board_state[10],
-	&board_state[9], &board_state[8], &board_state[7], &board_state[6], &board_state[5], &board_state[4],
-	&board_state[3], &board_state[2], &board_state[1], &board_state[0]};
+	// Whether any of the four blocks that would result from a rotation would be out of bounds.
+	wire rotation_out_of_bounds = (!(block1_y_test >= 0 && block1_y_test < 23)) || ((block2_y_test >= 0 && block2_y_test < 23) 
+	|| !(block3_y_test >= 0 && block3_y_test < 23) || !(block4_y_test >= 0 && block4_y_test < 23))
+	|| (!(block1_x_test >= 0 && block1_x_test < 10)) || ((block2_x_test >= 0 && block2_x_test < 10) 
+	|| !(block3_x_test >= 0 && block3_x_test < 10) || !(block4_x_test >= 0 && block4_x_test < 10));
 	
-	wire shift_down;
-	wire [4:0] cleared_index;
+	// Whether any of the four blocks that would result from a rotation would be intersecting fallen blocks.
+	wire rotation_intersects_existing = (board_state[block1_y_test][block1_x_test] || board_state[block2_y_test][block2_x_test] 
+	|| board_state[block3_y_test][block3_x_test] || board_state[block4_y_test][block4_x_test]);
+	
+	// Whether any of the four blocks that would result from a rotation would conflict with boundaries.
+	wire rotation_conflicts = rotation_out_of_bounds || rotation_intersects_existing;
 	
 	control c1(.clock(clock_block_fall),
 	.start_game(start_game),
 	.resetn(resetn),
 	.filled_under(filled_under),
-	.completed_lines(completed_lines),
 	.load_block(load_block),
 	.drop_block(drop_block),
-	.update_board_state(update_board_state),
-	.shift_down(shift_down));
+	.update_board_state(update_board_state));
 	
-	first_high_index fhi0(
-		.rows(completed_lines),
-		.index(cleared_index)
-		);
-		
+	
 	
 	// Game logic.  Effectively datapath.
 	always@(posedge clock_framerate) begin
@@ -154,18 +189,14 @@ input key_right);
 			if (update_board_state) begin
 				update_board();
 			end
-		// Checks if a row needs to be cleared.
-		end else if (shift_down) begin
-			for (k=cleared_index; k<19; k=k+1) begin
-				board_state[k] <= board_state[k+1];
-			end
-			board_state[19] <= 10'd0;
 		// Checks if the user wants to move to the left.
 		end else if (key_left && !filled_left) begin
 			move_left();
 		// Checks if the user wants to move to the right.
 		end else if (key_right && !filled_right) begin
 			move_right();
+		end else if (key_rotate && !rotation_conflicts) begin
+			rotate();
 		end
 	end
 endmodule
