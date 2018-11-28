@@ -4,16 +4,21 @@ input start_game,
 input resetn,
 input key_left,
 input key_right,
-input key_rotate);
+input key_rotate,
+output wire [229:0] board_flattened,
+output wire [3:0] block1_x, block2_x, block3_x, block4_x,
+output wire [4:0] block1_y, block2_y, block3_y, block4_y);
 
 	// An array that contains the status of each location in the board, and whether there is an already dropped
 	// block filling that coordinate.
 	reg [9:0] board_state[0:22];
-	wire [206:0]board_flattened;
+	// wire [229:0] board_flattened;
 	
 	// The location at which to load the central block.
-	reg [3:0]load_x;
-   reg [4:0]load_y;
+	wire [3:0]LOAD_X;
+	wire [4:0]LOAD_Y;
+	assign LOAD_X = 4'd4;
+	assign LOAD_Y = 5'd19;
 	
 	// The block type and rotation state.
 	reg [2:0]block_type;
@@ -21,8 +26,8 @@ input key_rotate);
 	reg [2:0]rotation_test;
 	
 	// The x and y positions of the four blocks of the tetromino.
-	wire [4:0] block1_y, block2_y, block3_y, block4_y;
-	wire [3:0] block1_x, block2_x, block3_x, block4_x;
+	// wire [4:0] block1_y, block2_y, block3_y, block4_y;
+	// wire [3:0] block1_x, block2_x, block3_x, block4_x;
 	
 	// The x and y positions of the four blocks of the tetromino, if it were rotated.
 	wire [4:0] block1_y_test, block2_y_test, block3_y_test, block4_y_test;
@@ -161,6 +166,7 @@ input key_rotate);
 	// Whether any of the four blocks that would result from a rotation would conflict with boundaries.
 	wire rotation_conflicts = rotation_out_of_bounds || rotation_intersects_existing;
 	
+	reg load_block, drop_block, update_board_state;
 	control c1(.clock(clock_block_fall),
 	.start_game(start_game),
 	.resetn(resetn),
@@ -169,12 +175,18 @@ input key_rotate);
 	.drop_block(drop_block),
 	.update_board_state(update_board_state));
 	
-	assign board_flattened = {board_state[0], board_state[1], board_state[2], board_state[3], board_state[4],
-	board_state[5], board_state[6], board_state[7], board_state[8], board_state[9], board_state[10], board_state[11],
-	board_state[12], board_state[13], board_state[14], board_state[15], board_state[16], board_state[17], board_state[18],
-	board_state[19], board_state[20], board_state[21], board_state[22]};
+	// Continually generate a random block.
+	wire [3:0] rand_id;
+	lfsr_randomizer lfsr0(
+		.clock(clock_on_board),
+		.resetn(resetn),
+		.out(rand_id)
+		);
 	
-	vga_tester v1(.board_flattened(board_flattened));
+	assign board_flattened = {board_state[22], board_state[21], board_state[20], board_state[19],
+	board_state[18], board_state[17], board_state[16], board_state[15], board_state[14], board_state[13], board_state[12],
+	board_state[11], board_state[10], board_state[9], board_state[8], board_state[7], board_state[6], board_state[5],
+	board_state[4], board_state[3], board_state[2], board_state[1], board_state[0]};
 	
 	
 	// This sets the rotation_test value at all times.
@@ -189,13 +201,17 @@ input key_rotate);
 	// Game logic.  Effectively datapath.
 	always@(posedge clock_framerate) begin
 		if (!resetn) begin
-			y <= load_x;
-			x <= load_y;
+			y <= LOAD_Y;
+			x <= LOAD_X;
+			block_type <= 3'd0;
+			rotation <= 3'd0;
 		// Checks if the block is supposed to drop this cycle. Does that if it should.
 		end else if (clock_block_fall) begin
 			if (load_block) begin
-				x <= load_x;
-				y <= load_y;
+				x <= LOAD_X;
+				y <= LOAD_Y;
+				block_type <= rand_id[2:0];
+				rotation <= 3'd0;
 			end
 			if (drop_block && !filled_under) begin
 				move_down();

@@ -30,11 +30,13 @@ module main
 	
 	wire resetn;
 	wire go;
+	assign resetn = SW[0];
+	assign go = SW[1];
 	
 	// Create the colour, x, y and writeEn wires that are inputs to the controller.
 	wire [2:0] colour;
-	wire [7:0] x;
-	wire [6:0] y;
+	wire [3:0] x;
+	wire [4:0] y;
 	wire writeEn;
 
 	// Create an Instance of a VGA controller - there can be only one!
@@ -63,20 +65,60 @@ module main
 			
 	// Put your code here. Your code should produce signals x,y,colour and writeEn/plot
 	// for the VGA controller, in addition to any other functionality your design may require.
-	wire game_clock;	
+	wire framerate;
+	wire [229:0] flat_board;
+	wire [3:0] x1, x2, x3, x4;
+	wire [4:0] y1, y2, y3, y4;
 	
-//	clock_50_divider framerate(
-//		.clock_in(CLOCK_50),
-//		.clock_out_hertz(6'd60),
-//		.clock_out(game_clock)
-//		);		
+	tetris t0(
+		.clock_on_board(CLOCK_50),
+		.start_game(go),
+		.resetn(resetn),
+		.key_left(KEY[2]),
+		.key_right(KEY[0]),
+		.key_rotate(KEY[1]),
+		.board_flattened(flat_board),
+		.block1_x(x1),
+		.block2_x(x2),
+		.block3_x(x3),
+		.block4_x(x4),
+		.block1_y(y1),
+		.block2_y(y2),
+		.block3_y(y3),
+		.block4_y(y4)
+		);
+	control_data cd0(
+		.enable(framerate),
+		.clock(CLOCK_50),
+		.resetn(resetn),
+		.board(flat_board),
+		.b1_col(x1),
+		.b2_col(x2),
+		.b3_col(x3),
+		.b4_col(x4),
+		.b1_row(y1),
+		.b2_row(y2),
+		.b3_row(y3),
+		.b4_row(y4),
+		.plot(writeEn),
+		.x(x),
+		.y(y),
+		.colour(colour)
+		);
+	rate_divider r1(
+		.resetn(resetn),
+		//.load_value(20'd833333),
+		.load_value(20'd3),
+		.clock_in(CLOCK_50),
+		.clock_out(framerate)
+		);
 endmodule
 
 module control_data(
 input enable, clock, resetn,
 input [229:0] board,
-input b1_col, b2_col, b3_col, b4_col,
-input b1_row, b2_row, b3_row, b4_row,
+input [3:0] b1_col, b2_col, b3_col, b4_col,
+input [4:0] b1_row, b2_row, b3_row, b4_row,
 output plot,
 output [3:0] x,
 output [4:0] y,
@@ -86,7 +128,7 @@ output [2:0] colour);
 	wire [2:0] blockcolour;
 	wire resetcount, drawblock, load1,load2, load3, load4;
 	
-	control c0(
+	vga_control vgac0(
 		.enable(enable),
 		.clock(clock),
 		.resetn(resetn),
@@ -127,7 +169,7 @@ output [2:0] colour);
 endmodule
 
 
-module control(
+module vga_control(
 input enable, clock, resetn,
 input [9:0] count_in,
 output reg plot,
