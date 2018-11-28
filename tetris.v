@@ -9,6 +9,7 @@ input key_rotate);
 	// An array that contains the status of each location in the board, and whether there is an already dropped
 	// block filling that coordinate.
 	reg [9:0] board_state[0:22];
+	wire [206:0]board_flattened;
 	
 	// The location at which to load the central block.
 	reg [3:0]load_x;
@@ -17,6 +18,7 @@ input key_rotate);
 	// The block type and rotation state.
 	reg [2:0]block_type;
 	reg [2:0]rotation;
+	reg [2:0]rotation_test;
 	
 	// The x and y positions of the four blocks of the tetromino.
 	wire [4:0] block1_y, block2_y, block3_y, block4_y;
@@ -30,11 +32,12 @@ input key_rotate);
 	reg [4:0] y;
 	reg [3:0] x;
 	
-	// Used for the for loop to initialize the board.
-	integer i, j, k;
+	// Used for the for loops.
+	integer i, j;
 	
 	// The clocks used in the game.
 	wire clock_framerate, clock_block_fall;
+	
 	
 	// Initializes the board.
 	initial begin
@@ -49,8 +52,8 @@ input key_rotate);
 	block_returner b1(
 	.x(x),
 	.y(y),
-	.block_type(0),
-	.rotation(0),
+	.block_type(block_type),
+	.rotation(rotation),
 	.x1(block1_x),
 	.y1(block1_y),
 	.x2(block2_x),
@@ -64,8 +67,8 @@ input key_rotate);
 	block_returner b2(
 	.x(x),
 	.y(y),
-	.block_type(0),
-	.rotation(0),
+	.block_type(block_type),
+	.rotation(rotation_test),
 	.x1(block1_x_test),
 	.y1(block1_y_test),
 	.x2(block2_x_test),
@@ -115,11 +118,7 @@ input key_rotate);
 	// Rotates the tetromino clockwise.
 	task rotate(); 
 		begin
-			if (rotation < 3) begin
-				rotation <= rotation + 1;
-			end else begin
-				rotation <= 0;
-			end
+			rotation = rotation_test;
 		end
 	endtask
 	
@@ -130,8 +129,8 @@ input key_rotate);
 			board_state[block2_y][block2_x] <= 1;
 			board_state[block3_y][block3_x] <= 1;
 			board_state[block4_y][block4_x] <= 1;
+			
 		end
-		
 	endtask
 	
 	// Whether any of the four blocks have an already dropped block under them or are at the bottom row.
@@ -161,31 +160,31 @@ input key_rotate);
 	
 	// Whether any of the four blocks that would result from a rotation would conflict with boundaries.
 	wire rotation_conflicts = rotation_out_of_bounds || rotation_intersects_existing;
-
-	// Array of lines filled, with each index corresponding to its row.
-	wire [19:0] completed_lines = {&board_state[19], &board_state[18], &board_state[17], &board_state[16],
-	&board_state[15], &board_state[14], &board_state[13], &board_state[12], &board_state[11], &board_state[10],
-	&board_state[9], &board_state[8], &board_state[7], &board_state[6], &board_state[5], &board_state[4],
-	&board_state[3], &board_state[2], &board_state[1], &board_state[0]};
-	
-	wire shift_down;
-	wire [4:0] cleared_index;
 	
 	control c1(.clock(clock_block_fall),
 	.start_game(start_game),
 	.resetn(resetn),
 	.filled_under(filled_under),
-	.completed_lines(completed_lines),
 	.load_block(load_block),
 	.drop_block(drop_block),
-	.update_board_state(update_board_state),
-	.shift_down(shift_down));
+	.update_board_state(update_board_state));
 	
-	first_high_index fhi0(
-		.rows(completed_lines),
-		.index(cleared_index)
-		);
-		
+	assign board_flattened = {board_state[0], board_state[1], board_state[2], board_state[3], board_state[4],
+	board_state[5], board_state[6], board_state[7], board_state[8], board_state[9], board_state[10], board_state[11],
+	board_state[12], board_state[13], board_state[14], board_state[15], board_state[16], board_state[17], board_state[18],
+	board_state[19], board_state[20], board_state[21], board_state[22]};
+	
+	vga_tester v1(.board_flattened(board_flattened));
+	
+	
+	// This sets the rotation_test value at all times.
+	always@(*)begin
+		if (rotation == 3)begin
+			rotation_test = 0;
+		end else begin
+			rotation_test = rotation + 1;
+		end
+	end
 	
 	// Game logic.  Effectively datapath.
 	always@(posedge clock_framerate) begin
@@ -204,12 +203,6 @@ input key_rotate);
 			if (update_board_state) begin
 				update_board();
 			end
-		// Checks if a row needs to be cleared.
-		end else if (shift_down) begin
-			for (k=cleared_index; k<19; k=k+1) begin
-				board_state[k] <= board_state[k+1];
-			end
-			board_state[19] <= 10'd0;
 		// Checks if the user wants to move to the left.
 		end else if (key_left && !filled_left) begin
 			move_left();
