@@ -240,6 +240,29 @@ output reg[3:0]x4);
 					x4 = x; 
 				end
 			end
+			default: begin  // I block default
+				if (rotation == 0 || rotation == 2) begin
+					// block 2 (left 1)
+					y2 = y;
+					x2 = x - 1;
+					// block 3 (right 1)
+					y3 = y;
+					x3 = x + 1;
+					// block 4 (right 2)
+					y4 = y;
+					x4 = x + 2; 
+				end else begin
+					// block 2 (up 1)
+					y2 = y + 1;
+					x2 = x;
+					// block 3 (up 2)
+					y3 = y + 2;
+					x3 = x;
+					// block 4 (down 1)
+					y4 = y - 1;
+					x4 = x; 
+				end
+			end
 		endcase
 	end
  

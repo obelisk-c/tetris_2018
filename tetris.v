@@ -159,50 +159,42 @@ output wire [4:0] block1_y, block2_y, block3_y, block4_y);
 	// Whether any of the four blocks that would result from a rotation would conflict with boundaries. 
 	wire rotation_conflicts = rotation_out_of_bounds || rotation_intersects_existing; 
 
-	
 	// Array of lines filled, with each index corresponding to its row.
 	wire [19:0] completed_lines = {&board_state[19], &board_state[18], &board_state[17], &board_state[16],
 	&board_state[15], &board_state[14], &board_state[13], &board_state[12], &board_state[11], &board_state[10],
 	&board_state[9], &board_state[8], &board_state[7], &board_state[6], &board_state[5], &board_state[4],
 	&board_state[3], &board_state[2], &board_state[1], &board_state[0]};
 	
-	wire shift_down;
-	wire [4:0] cleared_index;
-	wire load_block, drop_block, update_board_state;
+	// Whether blocks have fallen over the top of the screen.
+	wire overflow = |{board_state[22], board_state[21], board_state[20]};
 	
+	// Control and control signals
+	wire [4:0] cleared_index;
+	wire load_block, drop_block, update_board_state, shift_down, game_over;
 	control c1(.clock(clock_block_fall),
 	.start_game(start_game),
 	.resetn(resetn),
 	.filled_under(filled_under),
+	.overflow(overflow),
 	.completed_lines(completed_lines),
 	.load_block(load_block),
 	.drop_block(drop_block),
 	.update_board_state(update_board_state),
-	.shift_down(shift_down));
+	.shift_down(shift_down),
+	.game_over(game_over));
 	
 	first_high_index fhi0(
 		.rows(completed_lines),
 		.index(cleared_index)
 		);
 		
-//	// Next block
-//	wire [3:0] rand_out;
-//	lfsr_randomizer lfsr0(
-//		.clock(clock_on_board),
-//		.resetn(resetn),
-//		.out(rand_out)
-//		);
-
-
-	reg [2:0]random_id;
-	// Counter for randomization
-	always@(posedge clock_on_board) begin
-		if (random_id != 6) begin
-			random_id <= random_id + 1;
-		end else begin
-			random_id <= 3'd0;
-		end
-	end
+	// Next block
+	wire [3:0] rand_out;
+	lfsr_randomizer lfsr0(
+		.clock(clock_on_board),
+		.resetn(resetn),
+		.out(rand_out)
+		);
 	
 	// This sets the rotation_test value at all times. 
 	always@(*)begin 
@@ -226,12 +218,37 @@ output wire [4:0] block1_y, block2_y, block3_y, block4_y);
 			left_counter <= 4'b1111;
 			right_counter <= 4'b1111;
 			rotate_counter <= 4'b1111;
+			for (i=0; i<23; i=i+1) begin
+				for (j=0; j<10; j=j+1) begin
+					board_state[i][j] <= 0;
+				end 
+			end
+		// Checks if the game is lost
+		end else if (game_over) begin
+			x <= 4'd2;
+			y <= 5'd20;  // block is off screen
+			block_type <= 1;
+			rotation <= 0;
+			for (i=0; i<7; i=i+1) begin
+				board_state[i] <= 10'd0;
+			end
+			// draw a skull
+			board_state[7] <= 10'b0001_0101_00;
+			board_state[8] <= 10'b0001_1111_00;
+			board_state[9] <= 10'b0011_1011_10;
+			board_state[10] <= 10'b0011_1111_10;
+			board_state[11] <= 10'b0011_0100_10;
+			board_state[12] <= 10'b0011_1111_10;
+			board_state[13] <= 10'b0001_1111_00;
+			for (j=14; j<20; j=j+1) begin
+				board_state[j] <= 10'd0;
+			end
 		// Checks if the block is supposed to drop this cycle. Does that if it should.
 		end else if (clock_block_fall) begin
 			if (load_block) begin
 				x <= 4'd4;
 				y <= 5'd19;
-				block_type <= random_id; // temp value, fix the randomization
+				block_type <= rand_out[2:0];
 				rotation <= 0;
 				left_counter <= 4'b1111;
 				right_counter <= 4'b1111;
@@ -329,6 +346,7 @@ output wire [4:0] block1_y, block2_y, block3_y, block4_y);
 		end else if (key_right && !filled_right && right_counter == 4'd15) begin
 			right_counter <= 0;
 			move_right();
+		// Checks if the user wants to rotate.
 		end else if (key_rotate && rotate_counter == 4'd15 && !rotation_conflicts) begin 
 			rotate_counter <= 0;
 			rotate(); 
