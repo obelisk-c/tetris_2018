@@ -11,14 +11,14 @@ output reg clock_out);
 reg [19:0]count;
 
 initial begin
-	count = load_value - 1;
+	count = load_value - 20'd1;
 end
 
 always @(posedge clock_in) begin
 	if (count > 0 && resetn) begin
-		count <= count - 1;
+		count <= count - 20'd1;
 	end else begin
-		count <= load_value - 1;
+		count <= load_value - 20'd1;
 	end
 end
 

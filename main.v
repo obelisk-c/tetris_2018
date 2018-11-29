@@ -35,8 +35,8 @@ module main
 	
 	// Create the colour, x, y and writeEn wires that are inputs to the controller.
 	wire [2:0] colour;
-	wire [3:0] x;
-	wire [4:0] y;
+	wire [7:0] x;
+	wire [6:0] y;
 	wire writeEn;
 
 	// Create an Instance of a VGA controller - there can be only one!
@@ -58,7 +58,7 @@ module main
 			.VGA_BLANK(VGA_BLANK_N),
 			.VGA_SYNC(VGA_SYNC_N),
 			.VGA_CLK(VGA_CLK));
-		defparam VGA.RESOLUTION = "64x32";
+		defparam VGA.RESOLUTION = "160x120"; // try changing this, but keeping x and y the same width
 		defparam VGA.MONOCHROME = "FALSE";
 		defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
 		defparam VGA.BACKGROUND_IMAGE = "black.mif";
@@ -66,18 +66,24 @@ module main
 	// Put your code here. Your code should produce signals x,y,colour and writeEn/plot
 	// for the VGA controller, in addition to any other functionality your design may require.
 	wire framerate;
-	wire [229:0] flat_board;
+	wire [229:0] board;
 	wire [3:0] x1, x2, x3, x4;
 	wire [4:0] y1, y2, y3, y4;
 	
+	// Should automatically zero extend...
+	// wire [3:0] xout;
+	// wire [4:0] yout;
+	// assign x = {4'd0, xout};
+	// assign y = {2'd0, yout};
+
 	tetris t0(
 		.clock_on_board(CLOCK_50),
 		.start_game(go),
 		.resetn(resetn),
-		.key_left(KEY[2]),
-		.key_right(KEY[0]),
-		.key_rotate(KEY[1]),
-		.board_flattened(flat_board),
+		.key_left(!KEY[2]),
+		.key_right(!KEY[0]),
+		.key_rotate(!KEY[3]),
+		.flat_board(board),
 		.block1_x(x1),
 		.block2_x(x2),
 		.block3_x(x3),
@@ -87,11 +93,12 @@ module main
 		.block3_y(y3),
 		.block4_y(y4)
 		);
+	
 	control_data cd0(
 		.enable(framerate),
 		.clock(CLOCK_50),
 		.resetn(resetn),
-		.board(flat_board),
+		.board(board),
 		.b1_col(x1),
 		.b2_col(x2),
 		.b3_col(x3),
@@ -105,10 +112,11 @@ module main
 		.y(y),
 		.colour(colour)
 		);
+	
 	rate_divider r1(
 		.resetn(resetn),
-		//.load_value(20'd833333),
-		.load_value(20'd3),
+		.load_value(20'd833333),
+		//.load_value(20'd3),
 		.clock_in(CLOCK_50),
 		.clock_out(framerate)
 		);
@@ -239,24 +247,24 @@ output reg [2:0] colour);
 				plot = 1'b1;
 				draw_block = 1'b1;
 				load_b2 = 1'b1;
-				colour = 3'b100;
+				colour = 3'b010;
 				end
 			DRAW_B2: begin
 				plot = 1'b1;
 				draw_block = 1'b1;
 				load_b3 = 1'b1;
-				colour = 3'b100;
+				colour = 3'b010;
 				end
 			DRAW_B3: begin
 				plot = 1'b1;
 				draw_block = 1'b1;
 				load_b4 = 1'b1;
-				colour = 3'b100;
+				colour = 3'b010;
 				end
 			DRAW_B4: begin
 				plot = 1'b1;
 				draw_block = 1'b1;
-				colour = 3'b100;
+				colour = 3'b010;
 				end
 		endcase
 	end
@@ -352,6 +360,6 @@ output reg [9:0] q);
 		else if (q == 10'b1111_1111_11)
 			q <= 10'b1111_1111_11;
 		else
-			q <= q - 1;
+			q <= q - 10'd1;
 	end
 endmodule
