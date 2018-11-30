@@ -218,11 +218,6 @@ output wire [4:0] block1_y, block2_y, block3_y, block4_y);
 			left_counter <= 4'b1111;
 			right_counter <= 4'b1111;
 			rotate_counter <= 4'b1111;
-			for (i=0; i<23; i=i+1) begin
-				for (j=0; j<10; j=j+1) begin
-					board_state[i][j] <= 0;
-				end 
-			end
 		// Checks if the game is lost
 		end else if (game_over) begin
 			x <= 4'd2;
@@ -237,7 +232,7 @@ output wire [4:0] block1_y, block2_y, block3_y, block4_y);
 			board_state[8] <= 10'b0001_1111_00;
 			board_state[9] <= 10'b0011_1011_10;
 			board_state[10] <= 10'b0011_1111_10;
-			board_state[11] <= 10'b0011_0100_10;
+			board_state[11] <= 10'b0010_0100_10;
 			board_state[12] <= 10'b0011_1111_10;
 			board_state[13] <= 10'b0001_1111_00;
 			for (j=14; j<20; j=j+1) begin
