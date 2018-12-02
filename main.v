@@ -3,6 +3,12 @@ module main
 		CLOCK_50,						//	On Board 50 MHz
         KEY,
         SW,
+		  HEX0,
+		  HEX1,
+		  HEX2,
+		  HEX3,
+		  HEX4,
+		  HEX5,
 		// The ports below are for the VGA output.  Do not change.
 		VGA_CLK,   						//	VGA Clock
 		VGA_HS,							//	VGA H_SYNC
@@ -17,6 +23,13 @@ module main
 	input			CLOCK_50;				//	50 MHz
 	input   [9:0]   SW;
 	input   [3:0]   KEY;
+	
+	output  [6:0]   HEX0;
+	output  [6:0]   HEX1;
+	output  [6:0]   HEX2;
+	output  [6:0]   HEX3;
+	output  [6:0]   HEX4;
+	output  [6:0]   HEX5;
 
 	// Do not change the following outputs
 	output			VGA_CLK;   				//	VGA Clock
@@ -69,6 +82,7 @@ module main
 	wire [229:0] board;
 	wire [3:0] x1, x2, x3, x4;
 	wire [4:0] y1, y2, y3, y4;
+	wire [9:0]hundred_thousands, ten_thousands, thousands, hundreds, tens, ones;
 	
 	// Should automatically zero extend...
 	// wire [3:0] xout;
@@ -91,8 +105,44 @@ module main
 		.block1_y(y1),
 		.block2_y(y2),
 		.block3_y(y3),
-		.block4_y(y4)
+		.block4_y(y4),
+		.hundred_thousands(hundred_thousands),
+		.ten_thousands(ten_thousands),
+		.thousands(thousands),
+		.hundreds(hundreds),
+		.tens(tens),
+		.ones(ones)
 		);
+		
+	hex_decoder h0(
+		.hex_digit(ones),
+		.segments(HEX0)
+	);
+	
+	hex_decoder h1(
+		.hex_digit(tens),
+		.segments(HEX1)
+	);
+	
+	hex_decoder h2(
+		.hex_digit(hundreds),
+		.segments(HEX2)
+	);
+	
+	hex_decoder h3(
+		.hex_digit(thousands),
+		.segments(HEX3)
+	);
+	
+	hex_decoder h4(
+		.hex_digit(ten_thousands),
+		.segments(HEX4)
+	);
+	
+	hex_decoder h5(
+		.hex_digit(hundred_thousands),
+		.segments(HEX5)
+	);
 	
 	control_data cd0(
 		.enable(framerate),

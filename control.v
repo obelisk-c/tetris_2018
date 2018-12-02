@@ -9,7 +9,9 @@ output reg load_block,
 output reg drop_block,
 output reg update_board_state,
 output reg shift_down,
-output reg game_over);
+output reg game_over,
+output reg [2:0]score_multiplier,
+output reg add_score);
 	
     reg [3:0] current_state, next_state; 
     
@@ -21,7 +23,8 @@ output reg game_over);
 					 S_CHECK_LOSS          = 4'd5,
 					 S_CHECK_LINES         = 4'd6,
 					 S_CLEAR_LINE          = 4'd7,
-					 S_GAME_OVER           = 4'd8;
+					 S_ADD_SCORE           = 4'd8,
+					 S_GAME_OVER           = 4'd9;
 	
     // Next state logic aka our state table
     always@(*)
@@ -33,8 +36,9 @@ output reg game_over);
 					 S_DROP_BLOCK: next_state = filled_under ? S_UPDATE_BOARD_STATE : S_DROP_BLOCK;
 					 S_UPDATE_BOARD_STATE: next_state = S_CHECK_LOSS;
 					 S_CHECK_LOSS: next_state = overflow ? S_GAME_OVER : S_CHECK_LINES;
-					 S_CHECK_LINES: next_state = (|completed_lines) ? S_CLEAR_LINE : S_LOAD_BLOCK;
+					 S_CHECK_LINES: next_state = (|completed_lines) ? S_CLEAR_LINE : S_ADD_SCORE;
 					 S_CLEAR_LINE: next_state = S_CHECK_LINES;
+					 S_ADD_SCORE: next_state = S_LOAD_BLOCK;
 					 S_GAME_OVER: next_state = S_GAME_OVER;
 					 default: next_state = S_PRE_GAME;
         endcase
@@ -49,10 +53,12 @@ output reg game_over);
 		  update_board_state = 0;
 		  shift_down = 0;
 		  game_over = 0;
+		  add_score = 0;
 
         case (current_state)
             S_LOAD_BLOCK: begin
                 load_block = 1;
+					 score_multiplier = 0;
                 end
             S_DROP_BLOCK: begin
                 drop_block = 1;
@@ -62,6 +68,10 @@ output reg game_over);
                 end
 				S_CLEAR_LINE: begin
 					 shift_down = 1;
+					 score_multiplier = score_multiplier + 1;
+					 end
+				S_ADD_SCORE: begin
+					 add_score = 1;
 					 end
 				S_GAME_OVER: begin
 					game_over = 1;

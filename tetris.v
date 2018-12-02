@@ -7,11 +7,13 @@ input key_right,
 input key_rotate,
 output wire [229:0] flat_board,
 output wire [3:0] block1_x, block2_x, block3_x, block4_x,
-output wire [4:0] block1_y, block2_y, block3_y, block4_y);
+output wire [4:0] block1_y, block2_y, block3_y, block4_y,
+output wire [3:0]hundred_thousands, ten_thousands, thousands, hundreds, tens, ones);
 
 	// An array that contains the status of each location in the board, and whether there is an already dropped
 	// block filling that coordinate. Also a flattened array.
 	reg [9:0] board_state[0:22];
+	reg [19:0]score;
 	assign flat_board = {board_state[22], board_state[21], board_state[20], board_state[19], board_state[18], 
 	board_state[17], board_state[16], board_state[15], board_state[14], board_state[13], board_state[12], 
 	board_state[11], board_state[10], board_state[9], board_state[8], board_state[7], board_state[6], 
@@ -37,13 +39,15 @@ output wire [4:0] block1_y, block2_y, block3_y, block4_y);
 	// The clocks used in the game.
 	wire clock_framerate, clock_block_fall;
 	
-	// Initializes the board.
+	// Initializes the board and score.
 	initial begin
 		for (i=0; i<23; i=i+1) begin
 			for (j=0; j<10; j=j+1) begin
 				board_state[i][j] <= 0;
 			end 
 		end
+		
+		score = 0;
 	end
 	
 	// Returns the four blocks of the current tetromino.
@@ -88,6 +92,7 @@ output wire [4:0] block1_y, block2_y, block3_y, block4_y);
 	// Returns a much slower clock for the rate of the block fall.
 	rate_divider r2(
 	.resetn(resetn),
+	//.load_value(20'd2),
 	.load_value(20'd30),
 	.clock_in(clock_framerate),
 	.clock_out(clock_block_fall));
@@ -168,9 +173,16 @@ output wire [4:0] block1_y, block2_y, block3_y, block4_y);
 	// Whether blocks have fallen over the top of the screen.
 	wire overflow = |{board_state[22], board_state[21], board_state[20]};
 	
+	// Signals for score
+	wire add_score;
+	wire [2:0]score_multiplier;
+	reg [11:0]score_to_add;
+	
 	// Control and control signals
 	wire [4:0] cleared_index;
 	wire load_block, drop_block, update_board_state, shift_down, game_over;
+
+	
 	control c1(.clock(clock_block_fall),
 	.start_game(start_game),
 	.resetn(resetn),
@@ -181,6 +193,8 @@ output wire [4:0] block1_y, block2_y, block3_y, block4_y);
 	.drop_block(drop_block),
 	.update_board_state(update_board_state),
 	.shift_down(shift_down),
+	.add_score(add_score),
+	.score_multiplier(score_multiplier),
 	.game_over(game_over));
 	
 	first_high_index fhi0(
@@ -203,7 +217,27 @@ output wire [4:0] block1_y, block2_y, block3_y, block4_y);
 		end else begin 
 			rotation_test = rotation + 1; 
 		end 
-	end 
+	// This sets the points gathered from rows at all times.
+		if (score_multiplier == 0)begin
+			score_to_add = 12'd0;
+		end else if (score_multiplier == 1)begin
+			score_to_add = 12'd80;
+		end else if (score_multiplier == 2)begin
+			score_to_add = 12'd200;
+		end else if (score_multiplier == 3)begin
+			score_to_add = 12'd600;
+		end else if (score_multiplier == 4)begin
+			score_to_add = 12'd2400;
+		end 
+	end
+	
+	score_converter s1(.score(score),
+	.hundred_thousands(hundred_thousands),
+	.ten_thousands(ten_thousands),
+	.thousands(thousands),
+	.hundreds(hundreds),
+	.tens(tens),
+	.ones(ones));
 
 	
 	// Game logic.  Effectively datapath.
@@ -333,6 +367,9 @@ output wire [4:0] block1_y, block2_y, block3_y, block4_y);
 				board_state[18] <= board_state[19];
 			end
 			board_state[19] <= 10'd0;
+		// Adds the score from clearing rows to the total score.
+		end else if (add_score) begin
+			score <= score + score_to_add;
 		// Checks if the user wants to move to the left.
 		end else if (key_left && !filled_left && left_counter == 4'd15) begin
 			left_counter <= 0;
