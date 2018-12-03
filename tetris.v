@@ -39,6 +39,9 @@ output wire [3:0]hundred_thousands, ten_thousands, thousands, hundreds, tens, on
 	// The clocks used in the game.
 	wire clock_framerate, clock_block_fall;
 	
+	// The delay between blocks falling
+	reg delay_time;
+	
 	// Initializes the board and score.
 	initial begin
 		for (i=0; i<23; i=i+1) begin
@@ -93,7 +96,7 @@ output wire [3:0]hundred_thousands, ten_thousands, thousands, hundreds, tens, on
 	rate_divider r2(
 	.resetn(resetn),
 	//.load_value(20'd2),
-	.load_value(20'd30),
+	.load_value(delay_time),
 	.clock_in(clock_framerate),
 	.clock_out(clock_block_fall));
 
@@ -229,6 +232,17 @@ output wire [3:0]hundred_thousands, ten_thousands, thousands, hundreds, tens, on
 		end else if (score_multiplier == 4)begin
 			score_to_add = 12'd2400;
 		end 
+		
+	// This sets how fast the block falls depending on the score.
+		if (score < 10000)begin
+			delay_time = 20'd40;
+		end else if (score < 20000)begin
+			delay_time = 20'd30;
+		end else if (score < 30000)begin
+			delay_time = 20'd25;
+		end else if (score < 40000)begin
+			delay_time = 20'd20;
+		end
 	end
 	
 	score_converter s1(.score(score),
